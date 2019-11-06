@@ -50,8 +50,8 @@ def main():
 	print("\n---HLTVminer starting---")
 	minerdbg = False
 	dbdbg = False
+	mcsgoDB = DB("mcsgo.db")
 	#page1 = GetMatchResultsPage(0, minerdbg)
-
 	#match = GetMatch(page1[0], minerdbg)
 
 	#events = GetFinishedEvents(0, minerdbg)
