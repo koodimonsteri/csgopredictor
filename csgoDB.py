@@ -13,8 +13,6 @@ import sqlite3
 
 csgoDBname = "csgodb.db"
 
-def execSQL(sql):
-
 class DB:
 	def __init__(self, dbname, debug=False):
 		if debug:
@@ -22,7 +20,7 @@ class DB:
 		try:
 			self.dbconn = sqlite3.connect(dbname)
 			self.dbconn.execute("PRAGMA foreign_keys = 1") # Allow foreign keys
-			initializeCSGODB()
+			self.initializeCSGODB()
 			q = '''INSERT OR IGNORE INTO PlayerStats VALUES (?,'''
 			for i in range(0, 10 * 9):
 				q = q + "?," if i < 10*9-1 else q + "?)"
@@ -38,7 +36,7 @@ class DB:
 	def initializeCSGODB(self, debug=False):
 		try:
 			#conn = sqlite3.connect(csgoDBname)
-			c = self.conn.cursor()
+			c = self.dbconn.cursor()
 
 			# MatchData table
 			c.execute('''CREATE TABLE IF NOT EXISTS MatchData (
@@ -99,8 +97,8 @@ class DB:
 			if debug:
 				print("Created Event table")
 
-			conn.commit()
-			conn.close()
+			self.dbconn.commit()
+			#conn.close()
 
 			if debug:
 				print("Finished CSGO database initialization!")
@@ -129,8 +127,8 @@ class DB:
 			c = self.dbconn.cursor()
 			combined = [mapID] + stats
 			# total 10 players
-			c.execute(query, combined)
-			conn.commit()
+			c.execute(self.ps_query, combined)
+			self.dbconn.commit()
 			#conn.close()
 			if debug:
 				print("Finished inserting player stats")
@@ -145,7 +143,7 @@ class DB:
 	# mapData: list containing all map data
 	#
 	# Returns: True if success, False in case of Error
-	def InsertMapToDB(self, mapData, debug=False):
+	def InsertMap(self, mapData, debug=False):
 		try:
 			if debug:
 				print("Inserting map to csgoDB, mapID:", mapData[0])
@@ -167,7 +165,7 @@ class DB:
 			#conn.close()
 
 			# Insert player stats
-			InsertPlayerStatsToDB(mMapData[0], mPlayerStatData, debug)
+			self.InsertPlayerStatsToDB(mMapData[0], mPlayerStatData, debug)
 
 			if debug:
 				print("Finished inserting map stats")
@@ -182,7 +180,7 @@ class DB:
 	# matchData: list of matchdata, [matchData]
 	#
 	# Returns: True if success, False in case of Error
-	def InsertMatchToDB(self, matchData, debug=False):
+	def InsertMatch(self, matchData, debug=False):
 		try:
 			if debug:
 				print("Inserting match to csgoDB:", matchData[0])
@@ -359,7 +357,7 @@ class DB:
 			c = self.dbconn.cursor()
 
 			c.execute('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', event)
-			conn.commit()
+			self.dbconn.commit()
 			#conn.close()
 
 			if debug:
@@ -386,7 +384,7 @@ class DB:
 			c = self.dbconn.cursor()
 
 			c.executemany('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', events)
-			conn.commit()
+			self.dbconn.commit()
 			#conn.close()
 
 			if debug:
