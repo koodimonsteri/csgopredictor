@@ -52,9 +52,18 @@ def main():
 	dbdbg = False
 	mcsgoDB = DB("mcsgo.db")
 
-	page1 = GetMatchResultsPage(0, minerdbg)
-	match = GetMatch(page1[0], minerdbg)
-
+	mpage = GetMatchResultsPage(1, minerdbg)
+	for p in mpage:
+		mID = SToI(p.split("/")[2])
+		existsInDB = mcsgoDB.GetMatchByID(mID)
+		if existsInDB == None:
+			match = GetMatch(p, minerdbg)
+			if match != None:
+				suc1 = mcsgoDB.InsertMatch(match[0],dbdbg)
+				for m in match[1]:
+					suc2 = mcsgoDB.InsertMap(m,dbdbg)
+		else:
+			print("existsInDB:", existsInDB)
 	#events = GetFinishedEvents(0, minerdbg)
 
 	#dbinit = initializeCSGODB(dbdbg)
@@ -62,9 +71,6 @@ def main():
 
 	#res = GetTesting()
 	#print(res)
-	suc1 = mcsgoDB.InsertMatch(match[0],dbdbg)
-	for m in match[1]:
-		suc2 = mcsgoDB.InsertMap(m,dbdbg)
 
 	#res1 = GetMatchByID(match[0][0],dbdbg)
 	#print("matchQuery:", res1)

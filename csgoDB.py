@@ -17,19 +17,16 @@ class DB:
 	def __init__(self, dbname, debug=False):
 		if debug:
 				print("Beginning CSGO database initialization!")
+		self.ps_query = ""
 		try:
 			self.dbconn = sqlite3.connect(dbname)
 			self.dbconn.execute("PRAGMA foreign_keys = 1") # Allow foreign keys
-			self.initializeCSGODB()
-			q = '''INSERT OR IGNORE INTO PlayerStats VALUES (?,'''
-			for i in range(0, 10 * 9):
-				q = q + "?," if i < 10*9-1 else q + "?)"
-			self.ps_query = q
-			if debug:
-				print("PlayerStats query:", query)
-
 		except sqlite3.Error as e:
 			print("Error in", dbname, "initialization! error:", e)
+
+		self.initializeCSGODB()
+		if debug:
+				print("Finished CSGO database initialization!")
 
 	# Initialize csgoDB tables
 	# Returns: True if success, False in case of Error
@@ -43,8 +40,8 @@ class DB:
 				MatchID integer primary key unique,
 				MatchTime varchar,
 				EventName varchar,
-				MapIDs varchar,
-				FOREIGN KEY (EventName) REFERENCES Events (EventName) ON DELETE NO ACTION)''')
+				MapIDs varchar)''')
+				#FOREIGN KEY (EventName) REFERENCES Events (EventName) ON DELETE NO ACTION)''')
 
 			if debug:
 				print("Created MatchData table")
@@ -98,10 +95,13 @@ class DB:
 				print("Created Event table")
 
 			self.dbconn.commit()
-			#conn.close()
 
+			q = '''INSERT OR IGNORE INTO PlayerStats VALUES (?,'''
+			for i in range(0, 10 * 9):
+				q = q + "?," if i < 10*9-1 else q + "?)"
+			self.ps_query = q
 			if debug:
-				print("Finished CSGO database initialization!")
+				print("PlayerStats query:", query)
 			return True
 
 		except sqlite3.Error as e:
@@ -203,6 +203,18 @@ class DB:
 
 		except sqlite3.Error as e:
 			print("Error in inserting match to csgoDB:", e)
+			return False
+
+	# Insert multiple matches at once to DB
+	def InsertMatches(self, matchData, debug=False):
+		try:
+			c = self.dbconn.cursor()
+
+			c.executemany('''INSERT OR IGNORE INTO MatchData VALUES (?, ?, ?, ?)''', matchData)
+
+			self.dbconn.commit()
+		except sqlite3.Error as e:
+			print("Error in inserting multiple matches to csgoDB:", e)
 			return False
 
 	# Queries map by its ID
