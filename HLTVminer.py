@@ -51,30 +51,31 @@ def main():
 	minerdbg = False
 	dbdbg = False
 	mcsgoDB = DB("mcsgo.db")
-	#page1 = GetMatchResultsPage(0, minerdbg)
-	#match = GetMatch(page1[0], minerdbg)
+
+	page1 = GetMatchResultsPage(0, minerdbg)
+	match = GetMatch(page1[0], minerdbg)
 
 	#events = GetFinishedEvents(0, minerdbg)
 
-	dbinit = initializeCSGODB(dbdbg)
-	loadTestData()
+	#dbinit = initializeCSGODB(dbdbg)
+	#loadTestData()
 
 	#res = GetTesting()
 	#print(res)
-	'''suc1 = InsertMatchToDB(match[0],dbdbg)
+	suc1 = mcsgoDB.InsertMatch(match[0],dbdbg)
 	for m in match[1]:
-		suc2 = InsertMapToDB(m,dbdbg)
+		suc2 = mcsgoDB.InsertMap(m,dbdbg)
 
-	res1 = GetMatchByID(match[0][0],dbdbg)
-	print("matchQuery:", res1)
-	for m in match[1]:
-		res2 = GetMapByID(m[0],dbdbg)
-		res3 = GetPlayerStatsByMapID(m[0], dbdbg)
-		print("mapQuery:", res2)
-		print("playerStatsQuery:", res3)
+	#res1 = GetMatchByID(match[0][0],dbdbg)
+	#print("matchQuery:", res1)
+	#for m in match[1]:
+	#	res2 = GetMapByID(m[0],dbdbg)
+	#	res3 = GetPlayerStatsByMapID(m[0], dbdbg)
+	#	print("mapQuery:", res2)
+	#	print("playerStatsQuery:", res3)
 
-	res4 = GetMapsByMatchID(match[0][0], dbdbg)
-	print("mapsByMatchIDQuery:", res4)'''
+	#res4 = GetMapsByMatchID(match[0][0], dbdbg)
+	#print("mapsByMatchIDQuery:", res4)
 
 	#ongo = InsertEventToDB(["MFirstEvent", "8+", "$200,000", "Intl. LAN"], dbdbg)
 	#ongo2 = InsertEventToDB(["MSecondEvent", "16+", "$10,000", "Local LAN"], dbdbg)
