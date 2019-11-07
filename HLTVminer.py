@@ -1,7 +1,5 @@
 # Own
 from mHLTVAPI import *
-from excelhelper import *
-from neuralnetwork import *
 from csgoDB import *
 
 # pip
