@@ -20,6 +20,7 @@ Important functions:
 5. TODO: getUpcomingMatches() - return list of upcoming matchups
 '''
 
+
 # Form of tuple ([matchdata],[[mapdata]])
 # MatchData contains [MatchID (int), Time (DateTime (str, YYYY-MM-DD HH:MM), Event (str), MapIDs (str)]
 MATCHDATALENGTH = 4

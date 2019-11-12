@@ -5,7 +5,6 @@ from csgoDB import *
 # Standard
 import os
 import time
-import time
 import random
 
 '''
