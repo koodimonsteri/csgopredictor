@@ -1,15 +1,11 @@
 # Own
 from mHLTVAPI import *
-from excelhelper import *
-from neuralnetwork import *
 from csgoDB import *
-
-# pip
-from openpyxl import Workbook
-from openpyxl import load_workbook
+from proxyrotator import *
 
 # Standard
 import os
+import time
 
 '''
 Mines data from HLTV and writes it to sqlite db.
@@ -45,29 +41,46 @@ def loadTestData():
 				print('''100% of page done!''')
 		print("Finished parsing page", j)
 
+def batchLoader():
+	mdebug = False
+	minerRunning = True
+	mcsgoDB = DB("mcsgo.db")
+
+	# Start from page 0
+	curpage = 3
+	while minerRunning:
+		batchtime = 5.0   # 5 sec per batch
+		starttime = time.time()
+		sess = requests.Session()
+		# Batch of 100 matches from results page
+		mpage = GetMatchResultsPage(curpage, mdebug)
+		
+		for p in mpage:
+			mID = SToI(p.split("/")[2])
+			existsInDB = mcsgoDB.GetMatchByID(mID, mdebug)
+			if existsInDB == None:
+				match = GetMatch(p, mdebug)
+				if match != None:
+					suc1 = mcsgoDB.InsertMatch(match[0], mdebug)
+					for m in match[1]:
+						suc2 = mcsgoDB.InsertMap(m, mdebug)
+			else:
+				print("existsInDB:", existsInDB)
+				batchtime -= 0.05
+
+		sleeptime = batchtime - (time.time() - starttime)
+		print(sleeptime)
+		if sleeptime > 0:  # Sleep a bit if we are progressing too fast
+			time.sleep(sleeptime)
+			print("SLEEPPINK")
+		curpage += 1
 
 def main():
 	print("\n---HLTVminer starting---")
-	minerdbg = False
-	dbdbg = False
-	mcsgoDB = DB("mcsgo.db")
+	debug = False
 
-	mpage = GetMatchResultsPage(1, minerdbg)
-	for p in mpage:
-		mID = SToI(p.split("/")[2])
-		existsInDB = mcsgoDB.GetMatchByID(mID)
-		if existsInDB == None:
-			match = GetMatch(p, minerdbg)
-			if match != None:
-				suc1 = mcsgoDB.InsertMatch(match[0],dbdbg)
-				for m in match[1]:
-					suc2 = mcsgoDB.InsertMap(m,dbdbg)
-		else:
-			print("existsInDB:", existsInDB)
+	batchLoader()
 	#events = GetFinishedEvents(0, minerdbg)
-
-	#dbinit = initializeCSGODB(dbdbg)
-	#loadTestData()
 
 	#res = GetTesting()
 	#print(res)
