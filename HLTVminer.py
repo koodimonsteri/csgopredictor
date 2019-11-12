@@ -1,7 +1,10 @@
 # Own
 from mHLTVAPI import *
 from csgoDB import *
-from proxyrotator import *
+
+# pip
+import time
+import random
 
 # Standard
 import os
