@@ -1,10 +1,10 @@
 # Own
 from mHLTVAPI import *
-from excelhelper import *
-from neuralnetwork import *
 from csgoDB import *
 
 # pip
+import time
+import random
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
