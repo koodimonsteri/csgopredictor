@@ -11,427 +11,429 @@ import sqlite3
 #playerTableLabels = ["MapID", "Name", "Kills", "Assists", "Deaths", "ADR", "Headshots", "FlashAssists", "FirstKillDiff", "Rating"]
 #eventTableLabels  = ["EventName", "EventTeams", "EventPrize", "EventType"]
 
-csgoDBname = "csgodb.db"
-
-# Initialize csgoDB tables
-# Returns: True if success, False in case of Error
-def initializeCSGODB(debug=False):
-	try:
+class DB:
+	def __init__(self, dbname, debug=False):
 		if debug:
 			print("Beginning CSGO database initialization!")
+		self.ps_query = ""
+		try:
+			self.dbconn = sqlite3.connect(dbname)
+			self.dbconn.execute("PRAGMA foreign_keys = 1") # Allow foreign keys
+		except sqlite3.Error as e:
+			print("Error in", dbname, "initialization! error:", e)
 
-		conn = sqlite3.connect(csgoDBname)
-		conn.execute("PRAGMA foreign_keys = 1") # Allow foreign keys
-		c = conn.cursor()
-
-		# MatchData table
-		c.execute('''CREATE TABLE IF NOT EXISTS MatchData (
-			MatchID integer primary key unique,
-			MatchTime varchar,
-			EventName varchar,
-			MapIDs varchar,
-			FOREIGN KEY (EventName) REFERENCES Events (EventName) ON DELETE NO ACTION)''')
-
+		self.initializeCSGODB()
 		if debug:
-			print("Created MatchData table")
+				print("Finished CSGO database initialization!")
 
-		# MapData table
-		c.execute('''CREATE TABLE IF NOT EXISTS MapData (
-			MapID integer primary key unique,
-			MapName varchar,
-			Team1 varchar,
-			Team2 varchar,
-			T1firsthalf integer,
-			T2firsthalf integer,
-			T1secondhalf integer,
-			T2secondhalf integer,
-			T1overtime integer,
-			T2overtime integer,
-			T1startside varchar)''')
+	# Initialize csgoDB tables
+	# Returns: True if success, False in case of Error
+	def initializeCSGODB(self, debug=False):
+		try:
+			#conn = sqlite3.connect(csgoDBname)
+			c = self.dbconn.cursor()
 
-		if debug:
-			print("Created MapData table")
+			# MatchData table
+			c.execute('''CREATE TABLE IF NOT EXISTS MatchData (
+				MatchID integer primary key unique,
+				MatchTime varchar,
+				EventName varchar,
+				MapIDs varchar)''')
+				#FOREIGN KEY (EventName) REFERENCES Events (EventName) ON DELETE NO ACTION)''')
 
-		# Create player table query
-		# And then execute it
-		query = "CREATE TABLE IF NOT EXISTS PlayerStats (MapID integer unique,"
-		for i in range(0,10):
-			mprefix = "P" + str(i)
-			pname    = mprefix + "Name varchar,"
-			pkills   = mprefix + "Kills integer,"
-			passists = mprefix + "Assists integer,"
-			pdeaths  = mprefix + "Deaths integer,"
-			padr     = mprefix + "ADR real,"
-			phs      = mprefix + "HeadShots integer,"
-			pfa      = mprefix + "FlashAssists integer,"
-			pfkd     = mprefix + "FirstKillDifference integer,"
-			prating  = mprefix + "Rating real," if i < 9 else "Rating real)"
-			query = query + pname + pkills + passists + pdeaths + padr + phs + pfa + pfkd + prating
-		c.execute(query)
+			if debug:
+				print("Created MatchData table")
 
-		if debug:
-			print("PlayerStats table query:", query)
-			print("Created PlayerStats table!")
+			# MapData table
+			c.execute('''CREATE TABLE IF NOT EXISTS MapData (
+				MapID integer primary key unique,
+				MapName varchar,
+				Team1 varchar,
+				Team2 varchar,
+				T1firsthalf integer,
+				T2firsthalf integer,
+				T1secondhalf integer,
+				T2secondhalf integer,
+				T1overtime integer,
+				T2overtime integer,
+				T1startside varchar)''')
 
-		# Event table
-		c.execute('''CREATE TABLE IF NOT EXISTS Events (
-			EventName varchar primary key unique,
-			EventTeams varchar,
-			EventPrize varchar,
-			EventType varchar)''')
+			if debug:
+				print("Created MapData table")
 
-		if debug:
-			print("Created Event table")
+			# Create player table query
+			# And then execute it
+			query = "CREATE TABLE IF NOT EXISTS PlayerStats (MapID integer unique,"
+			for i in range(0,10):
+				mprefix = "P" + str(i)
+				pname    = mprefix + "Name varchar,"
+				pkills   = mprefix + "Kills integer,"
+				passists = mprefix + "Assists integer,"
+				pdeaths  = mprefix + "Deaths integer,"
+				padr     = mprefix + "ADR real,"
+				phs      = mprefix + "HeadShots integer,"
+				pfa      = mprefix + "FlashAssists integer,"
+				pfkd     = mprefix + "FirstKillDifference integer,"
+				prating  = mprefix + "Rating real," if i < 9 else "Rating real)"
+				query = query + pname + pkills + passists + pdeaths + padr + phs + pfa + pfkd + prating
+			c.execute(query)
 
-		conn.commit()
-		conn.close()
+			if debug:
+				print("PlayerStats table query:", query)
+				print("Created PlayerStats table!")
 
-		if debug:
-			print("Finished CSGO database initialization!")
-		return True
+			# Event table
+			c.execute('''CREATE TABLE IF NOT EXISTS Events (
+				EventName varchar primary key unique,
+				EventTeams varchar,
+				EventPrize varchar,
+				EventType varchar)''')
 
-	except sqlite3.Error as e:
-		print("Error in csgoDB initialization:", e)
-		return False
+			if debug:
+				print("Created Event table")
 
-#####################################################
-#           Match related stuff in csgoDB           #
-#####################################################
+			self.dbconn.commit()
 
-# Insert player stats from 1 map to csgoDB
-# Parameters:
-# mapID: mapID, (int)
-# stats: list containing all player stats from 1 map
-#
-# Returns: True if success, False in case of Error
-def InsertPlayerStatsToDB(mapID, stats, debug=False):
-	try:
-		if debug:
-			print("Inserting player stats to csgoDB, mapID:", mapID)
+			# Build PlayerStats insert query
+			q = '''INSERT OR IGNORE INTO PlayerStats VALUES (?,'''
+			for i in range(0, (10 * 9)-1):
+				q = q + "?,"
+			q = q + "?)"
+			self.ps_query = q
+			if debug:
+				print("PlayerStats query:", query)
+			return True
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		combined = [mapID] + stats
-		query = '''INSERT OR IGNORE INTO PlayerStats VALUES (?,'''
-		# total 10 players
-		for i in range(0, 10 * 9):
-			query = query + "?," if i < 10*9-1 else query + "?)"
-		if debug:
-			print("PlayerStats query:", query)
-
-		c.execute(query, combined)
-		conn.commit()
-		conn.close()
-		if debug:
-			print("Finished inserting player stats")
-		return True
-
-	except sqlite3.Error as e:
-		print("Error in inserting player stats to csgoDB:", e)
-		return False
-
-# Insert data from single map to csgoDB
-# Parameters:
-# mapData: list containing all map data
-#
-# Returns: True if success, False in case of Error
-def InsertMapToDB(mapData, debug=False):
-	try:
-		if debug:
-			print("Inserting map to csgoDB, mapID:", mapData[0])
-
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-
-		mMapData = mapData[:11]        # MAPSTATOFFSET
-		mPlayerStatData = mapData[11:] # MAPSTATOFFSET
-		# Insert map data
-		if debug:
-			print("MapData: ", mMapData)
-			print("PlayerStats:", mPlayerStatData)
-
-		query = "INSERT OR IGNORE INTO MapData VALUES(?,?,?,?,?,?,?,?,?,?,?)"
-
-		c.execute(query, mMapData)
-		conn.commit()
-		conn.close()
-
-		# Insert player stats
-		InsertPlayerStatsToDB(mMapData[0], mPlayerStatData, debug)
-
-		if debug:
-			print("Finished inserting map stats")
-		return True
-
-	except sqlite3.Error as e:
-		print("Error in inserting map to csgoDB:", e)
-		return False
-
-# Insert match data to csgoDB
-# Parameters:
-# matchData: list of matchdata, [matchData]
-#
-# Returns: True if success, False in case of Error
-def InsertMatchToDB(matchData, debug=False):
-	try:
-		if debug:
-			print("Inserting match to csgoDB:", matchData[0])
-
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-
-		if len(matchData) != 4:
-			print("Length of matchdata does not match!")
+		except sqlite3.Error as e:
+			print("Error in csgoDB initialization:", e)
 			return False
 
-		c.execute('''INSERT OR IGNORE INTO MatchData VALUES (?, ?, ? ,?)''', matchData)
+	#####################################################
+	#           Match related stuff in csgoDB           #
+	#####################################################
 
-		conn.commit()
-		conn.close()
+	# Insert player stats from 1 map to csgoDB
+	# Parameters:
+	# mapID: mapID, (int)
+	# stats: list containing all player stats from 1 map
+	#
+	# Returns: True if success, False in case of Error
+	def InsertPlayerStatsToDB(self, mapID, stats, debug=False):
+		try:
+			if debug:
+				print("Inserting player stats to csgoDB, mapID:", mapID)
 
-		if debug:
-			print("Finished inserting match to csgoDB!")
-		return True
+			c = self.dbconn.cursor()
+			combined = [mapID] + stats
+			
+			c.execute(self.ps_query, combined)
+			self.dbconn.commit()
 
-	except sqlite3.Error as e:
-		print("Error in inserting match to csgoDB:", e)
-		return False
+			if debug:
+				print("Finished inserting player stats")
+			return True
 
-# Queries map by its ID
-# Parameters:
-# mID: mapID, integer
-#
-# Returns: mapdata list or None
-def GetMapByID(mID, debug=False):
-	try:
-		if debug:
-			print("Querying map by ID:", mID)
+		except sqlite3.Error as e:
+			print("Error in inserting player stats to csgoDB:", e)
+			return False
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		res = c.execute('''SELECT * FROM MapData WHERE mapID = ?''', (mID,)).fetchone()
-		conn.close()
-		if debug:
-			print("Finished querying map, result:", res)
-		return res
+	# Insert data from single map to csgoDB
+	# Parameters:
+	# mapData: list containing all map data
+	#
+	# Returns: True if success, False in case of Error
+	def InsertMap(self, mapData, debug=False):
+		try:
+			if debug:
+				print("Inserting map to csgoDB, mapID:", mapData[0])
 
-	except sqlite3.Error as e:
-		print("Error in querying map by ID:", mID, " error:", e)
-		return None
+			c = self.dbconn.cursor()
 
-# Queries maps by matchID
-# Parameters:
-# mID: matchID, (int)
-#
-# Returns: list of mapdata lists, [[mapdata]]
-def GetMapsByMatchID(mID, debug=False):
-	try:
-		if debug:
-			print("Querying maps by matchID:", mID)
+			mMapData = mapData[:11]        # MAPSTATOFFSET
+			mPlayerStatData = mapData[11:] # MAPSTATOFFSET
 
-		mmatch = GetMatchByID(mID, debug)
-		mapids = MapIDsToList(mmatch[3])
+			if debug:
+				print("MapData: ", mMapData)
+				print("PlayerStats:", mPlayerStatData)
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		res = []
-		for mid in mapids:
-			res.append(c.execute('''SELECT * FROM MapData WHERE MapID = ?''', (mid,)).fetchone())
-		conn.close()
-		if debug:
-			print("Finished querying maps by matchID, result:", res)
-		return res
+			query = "INSERT OR IGNORE INTO MapData VALUES(?,?,?,?,?,?,?,?,?,?,?)"
 
-	except sqlite3.Error as e:
-		print("Error in querying maps by matchID:", mID, " error:", e)
-		return None
+			# Insert map data
+			c.execute(query, mMapData)
+			self.dbconn.commit()
 
-# Queries match by its ID
-# Parameters:
-# mID: matchID, (int)
-#
-# Returns: matchdata list, [matchdata]
-def GetMatchByID(mID, debug=False):
-	try:
-		if debug:
-			print("Querying match by ID:", mID)
+			# Insert player stats
+			self.InsertPlayerStatsToDB(mMapData[0], mPlayerStatData, debug)
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		res = c.execute('''SELECT * FROM MatchData WHERE MatchID = ?''', (mID,)).fetchone()
-		conn.close()
-		if debug:
-			print("Finished querying match, result:", res)
-		return res
+			if debug:
+				print("Finished inserting map stats")
+			return True
 
-	except sqlite3.Error as e:
-		print("Error in querying match by ID:", mID, " error:", e)
-		return None
+		except sqlite3.Error as e:
+			print("Error in inserting map to csgoDB:", e)
+			return False
 
-# Queries player stats by mapID
-# Parameters:
-# mID: mapID, (int)
-#
-# Returns: list of player stats
-def GetPlayerStatsByMapID(mID, debug=False):
-	try:
-		if debug:
-			print("Querying player stats by mapID:", mID)
+	# Insert match data to csgoDB
+	# Parameters:
+	# matchData: list of matchdata, [matchData]
+	#
+	# Returns: True if success, False in case of Error
+	def InsertMatch(self, matchData, debug=False):
+		try:
+			if debug:
+				print("Inserting match to csgoDB:", matchData[0])
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		res = c.execute('''SELECT * FROM PlayerStats WHERE MapID = ?''', (mID,)).fetchone()
-		conn.close()
-		if debug:
-			print("Finished querying player stats, result:", res)
-		return res
+			c = self.dbconn.cursor()
 
-	except sqlite3.Error as e:
-		print("Error in querying player stats by mapID:", mID, "error:", e)
-		return None
+			if len(matchData) != 4:
+				print("Length of matchdata does not match!")
+				return False
 
-# Queries player stats by matchID
-# Parameters:
-# mID: mapID, (int)
-#
-# Returns: list of player stats
-def GetPlayerStatsByMatchID(mID, debug=False):
-	try:
-		if debug:
-			print("Querying player stats by matchID", mID)
+			c.execute('''INSERT OR IGNORE INTO MatchData VALUES (?, ?, ? ,?)''', matchData)
+			self.dbconn.commit()
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
+			if debug:
+				print("Finished inserting match to csgoDB!")
+			return True
 
-		match = GetMatchByID(mID)
-		mapids = MapIDsToList(match[3])
-		playerstats = []
-		for mid in mapids:
-			playerstats.append(GetPlayerStatsByMapID(mid))
+		except sqlite3.Error as e:
+			print("Error in inserting match to csgoDB:", e)
+			return False
 
-		if debug:
-			print("Finished querying player stats by matchID, result:", )
-		return res
+	# Insert multiple matches at once to DB
+	def InsertMatches(self, matchData, debug=False):
+		try:
+			c = self.dbconn.cursor()
 
-	except sqlite3.Error as e:
-		print("Error in querying player stats by matchID:", mID, " error:", e)
+			c.executemany('''INSERT OR IGNORE INTO MatchData VALUES (?, ?, ?, ?)''', matchData)
+
+			self.dbconn.commit()
+		except sqlite3.Error as e:
+			print("Error in inserting multiple matches to csgoDB:", e)
+			return False
+
+	# Queries map by its ID
+	# Parameters:
+	# mID: mapID, integer
+	#
+	# Returns: mapdata list or None
+	def GetMapByID(self, mID, debug=False):
+		try:
+			if debug:
+				print("Querying map by ID:", mID)
+
+			c = self.dbconn.cursor()
+			res = c.execute('''SELECT * FROM MapData WHERE mapID = ?''', (mID,)).fetchone()
+
+			if debug:
+				print("Finished querying map, result:", res)
+			return res
+
+		except sqlite3.Error as e:
+			print("Error in querying map by ID:", mID, " error:", e)
+			return None
+
+	# Queries maps by matchID
+	# Parameters:
+	# mID: matchID, (int)
+	#
+	# Returns: list of mapdata lists, [[mapdata]]
+	def GetMapsByMatchID(self, mID, debug=False):
+		try:
+			if debug:
+				print("Querying maps by matchID:", mID)
+
+			mmatch = GetMatchByID(mID, debug)
+			mapids = MapIDsToList(mmatch[3])
+
+			c = self.dbconn.cursor()
+			res = []
+			for mid in mapids:
+				res.append(c.execute('''SELECT * FROM MapData WHERE MapID = ?''', (mid,)).fetchone())
+
+			if debug:
+				print("Finished querying maps by matchID, result:", res)
+			return res
+
+		except sqlite3.Error as e:
+			print("Error in querying maps by matchID:", mID, " error:", e)
+			return None
+
+	# Queries match by its ID
+	# Parameters:
+	# mID: matchID, (int)
+	#
+	# Returns: matchdata list, [matchdata]
+	def GetMatchByID(self, mID, debug=False):
+		try:
+			if debug:
+				print("Querying match by ID:", mID)
+
+			c = self.dbconn.cursor()
+			res = c.execute('''SELECT * FROM MatchData WHERE MatchID = ?''', (mID,)).fetchone()
+
+			if debug:
+				print("Finished querying match, result:", res)
+			return res
+
+		except sqlite3.Error as e:
+			print("Error in querying match by ID:", mID, " error:", e)
+			return None
+
+	# Queries player stats by mapID
+	# Parameters:
+	# mID: mapID, (int)
+	#
+	# Returns: list of player stats
+	def GetPlayerStatsByMapID(self, mID, debug=False):
+		try:
+			if debug:
+				print("Querying player stats by mapID:", mID)
+
+			c = self.dbconn.cursor()
+			res = c.execute('''SELECT * FROM PlayerStats WHERE MapID = ?''', (mID,)).fetchone()
+
+			if debug:
+				print("Finished querying player stats, result:", res)
+			return res
+
+		except sqlite3.Error as e:
+			print("Error in querying player stats by mapID:", mID, "error:", e)
+			return None
+
+	# Queries player stats by matchID
+	# Parameters:
+	# mID: mapID, (int)
+	#
+	# Returns: list of player stats
+	def GetPlayerStatsByMatchID(self, mID, debug=False):
+		try:
+			if debug:
+				print("Querying player stats by matchID", mID)
+
+			c = self.dbconn.cursor()
+
+			match = GetMatchByID(mID)
+			mapids = MapIDsToList(match[3])
+			playerstats = []
+			for mid in mapids:
+				playerstats.append(GetPlayerStatsByMapID(mid))
+
+			if debug:
+				print("Finished querying player stats by matchID, result:", )
+			return playerstats
+
+		except sqlite3.Error as e:
+			print("Error in querying player stats by matchID:", mID, " error:", e)
 
 
-def GetTesting():
-	try:
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
-		res = c.execute('''SELECT * FROM MatchData''').fetchall()
-		res2 = c.execute('''SELECT * FROM MatchData WHERE EventName = ?''',("StarLadder Major Berlin 2019",)).fetchall()
-		#print(res)
-		#print("SELECT * FROM MatchData")
-		print("SELECT * FROM MatchData WHERE EventName = StarLadder Major Berlin 2019", res2)
-		conn.close()
-		return res2
-	except sqlite3.Error as e:
-		print("Error:", e)
+	def GetTesting(self):
+		try:
 
-#####################################################
-#           Event related stuff in csgoDB           #
-#####################################################
+			c = self.dbconn.cursor()
+			res = c.execute('''SELECT * FROM MatchData''').fetchall()
+			res2 = c.execute('''SELECT * FROM MatchData WHERE EventName = ?''',("StarLadder Major Berlin 2019",)).fetchall()
 
-# Insert 1 event to csgodb
-# Parameters:
-# event: (4) length list containing event data
-#
-# Returns: True is success, False in case of Error
-def InsertEventToDB(event, debug=False):
-	try:
-		if debug:
-			print("Inserting event:", event[0], "Teams:", event[1], "Prize:", event[2], "Type:", event[3])
+			print("SELECT * FROM MatchData WHERE EventName = StarLadder Major Berlin 2019", res2)
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
+			return res2
+		except sqlite3.Error as e:
+			print("Error:", e)
 
-		c.execute('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', event)
-		conn.commit()
-		conn.close()
+	#####################################################
+	#           Event related stuff in csgoDB           #
+	#####################################################
 
-		if debug:
-			print("Finished inserting event", event[0], "to csgoDB")
-		return True
+	# Insert 1 event to csgodb
+	# Parameters:
+	# event: (4) length list containing event data
+	#
+	# Returns: True is success, False in case of Error
+	def InsertEventToDB(self, event, debug=False):
+		try:
+			if debug:
+				print("Inserting event:", event[0], "Teams:", event[1], "Prize:", event[2], "Type:", event[3])
 
-	except sqlite3.Error as e:
-		print("Error in inserting single event to csgoDB:", e)
-		return False
+			c = self.dbconn.cursor()
 
-# Insert multiple events to csgoDB
-# Parameters:
-# events: list of (4) length lists containing event data
-#
-# Returns: True if success, False in case of Error
-def InsertEventsToDB(events, debug=False):
-	try:
-		if debug:
-			print("Inserting multiple events to csgoDB")
-			for e in events:
-				print(e)
+			c.execute('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', event)
+			self.dbconn.commit()
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
+			if debug:
+				print("Finished inserting event", event[0], "to csgoDB")
+			return True
 
-		c.executemany('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', events)
-		conn.commit()
-		conn.close()
+		except sqlite3.Error as e:
+			print("Error in inserting single event to csgoDB:", e)
+			return False
 
-		if debug:
-			print("Finished inserting {} events to csgoDB".format(len(events)))
-		return True
+	# Insert multiple events to csgoDB
+	# Parameters:
+	# events: list of (4) length lists containing event data
+	#
+	# Returns: True if success, False in case of Error
+	def InsertEventsToDB(self, events, debug=False):
+		try:
+			if debug:
+				print("Inserting multiple events to csgoDB")
+				for e in events:
+					print(e)
 
-	except sqlite3.Error as e:
-		print("Error in inserting event to csgoDB:", e)
-		return False
+			c = self.dbconn.cursor()
 
-# Queries event by its name
-# Parameters:
-# ename: event name, (str)
-#
-# Returns: matching event or None
-def GetEventByName(ename, debug=False):
-	try:
-		if debug:
-			print("Querying event by name", ename, "from csgoDB")
+			c.executemany('''INSERT OR IGNORE INTO Events VALUES (?, ?, ?, ?)''', events)
+			self.dbconn.commit()
 
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
+			if debug:
+				print("Finished inserting {} events to csgoDB".format(len(events)))
+			return True
 
-		res = c.execute('''SELECT * FROM Events WHERE EventName = ?''', (ename,)).fetchall()
-		conn.close()
+		except sqlite3.Error as e:
+			print("Error in inserting event to csgoDB:", e)
+			return False
 
-		if debug:
-			print("Finished querying event", ename, "from csgoDB:", res)
-		return res
+	# Queries event by its name
+	# Parameters:
+	# ename: event name, (str)
+	#
+	# Returns: matching event or None
+	def GetEventByName(self, ename, debug=False):
+		try:
+			if debug:
+				print("Querying event by name", ename, "from csgoDB")
 
-	except sqlite3.Error as e:
-		print("Error in querying event by name:", e)
-		return None
+			c = self.dbconn.cursor()
 
-# Queries all events from csgoDB
-# Returns: list of all events in database
-def GetAllEventsFromDB(debug=False):
-	try:
-		if debug:
-			print("Querying all events from csgoDB")
-		conn = sqlite3.connect(csgoDBname)
-		c = conn.cursor()
+			res = c.execute('''SELECT * FROM Events WHERE EventName = ?''', (ename,)).fetchall()
 
-		res = c.execute('''SELECT * FROM Events''').fetchall()
-		conn.close()
+			if debug:
+				print("Finished querying event", ename, "from csgoDB:", res)
+			return res
 
-		if debug:
-			print("Finished querying all events from csgoDB:")
-			for r in res:
-				print(r)
-		return res
+		except sqlite3.Error as e:
+			print("Error in querying event by name:", e)
+			return None
 
-	except sqlite3.Error as e:
-		print("Error in querying all events from DB:", e)
-		return None
+	# Queries all events from csgoDB
+	# Returns: list of all events in database
+	def GetAllEventsFromDB(self, debug=False):
+		try:
+			if debug:
+				print("Querying all events from csgoDB")
+
+			c = self.dbconn.cursor()
+
+			res = c.execute('''SELECT * FROM Events''').fetchall()
+
+			if debug:
+				print("Finished querying all events from csgoDB:")
+				for r in res:
+					print(r)
+			return res
+
+		except sqlite3.Error as e:
+			print("Error in querying all events from DB:", e)
+			return None
 
 
 #####################################################
@@ -463,7 +465,7 @@ def MapIDsToList(mapIDs):
 		parts[i] = SToI(parts[i])
 	return parts
 
-# Rate event based on its features
+# Rate event based on its features // Just randomly testing
 # Feature1: amount of teams
 # Feature2: prize
 # Feature3: event type

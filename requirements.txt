@@ -1,3 +1,1 @@
-openpyxl
 beautifulsoup4
-numpy

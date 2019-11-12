@@ -4,6 +4,7 @@ from csgoDB import MapIDsToList, MapIDsToStr
 
 # pip
 from bs4 import BeautifulSoup
+
 import time
 import random
 
@@ -13,9 +14,9 @@ import requests
 '''
 Simple API to mine data from hltv.org
 Important functions:
-1. GetMatchResults(X)  - returns list of match urls from page X of results
-2. GetMatch(matchURL)  - returns matchdata and list of mapdata
-3. GetMapStats(mapURL) - returns mapdata data structure which is described below
+1. GetMatchResults(X)   - returns list of match urls from page X of results
+2. GetMatch(matchURL)   - returns matchdata and list of mapdata
+3. GetMapStats(mapURL)  - returns mapdata data structure which is described below
 4. GetFinishedEvents(X) - returns finished events from hltv archive page X
 5. TODO: getUpcomingMatches() - return list of upcoming matchups
 '''
@@ -48,8 +49,8 @@ OTROUNDST2   = 9  # Overtime Team2 rounds
 STARTSIDET1  = 10 # Start side of Team1
 
 # Player stat indice offsets in mapdata
-# Idx = PX * PLAYERSTATCOUNT + MAPSTATOFFSET + Offset
-# Players 1-10
+# Idx = MAPSTATOFFSET + PX * PLAYERSTATCOUNT + Offset
+# PX 1-10
 PNAME    = 0 # Team1 player1 name
 PKILLS   = 1 # Team1 player1 kills
 PASSISTS = 2 # Team1 player1 assists
@@ -65,10 +66,9 @@ PRATING  = 8 # Team1 player1 Rating
 def requestHLTV(url):
 	url = "https://www.hltv.org" + url
 	headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:70.0) Gecko/20100101 Firefox/70.0"
 	}
-	req = requests.get(url, headers=headers)
-	return req
+	return requests.get(url, headers=headers)
 
 # Returns match URLs from 1 result page
 # Parameters:
