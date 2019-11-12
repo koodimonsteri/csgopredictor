@@ -4,6 +4,8 @@ from csgoDB import MapIDsToList, MapIDsToStr
 
 # pip
 from bs4 import BeautifulSoup
+import time
+import random
 
 # Standard
 import requests
@@ -240,6 +242,7 @@ def GetMatch(matchURL, debug=False):
 
 	mapDataList = []
 	for ml in mapLinks:
+		time.sleep(0.5*random.random())
 		mapDataList.append(GetMapStats(ml, debug))
 
 	mapIDlist = []

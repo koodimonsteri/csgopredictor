@@ -3,6 +3,8 @@ from mHLTVAPI import *
 from csgoDB import *
 
 # pip
+import time
+import random
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
